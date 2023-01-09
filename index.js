@@ -49,7 +49,6 @@ client.on('ready', () => {
   }
   //Log a message to confirm bot is online.
   console.log('Big brother is watching.');
-
   //Open our database.
   const sqlite3 = require('sqlite3').verbose();
   let activityDB = new sqlite3.Database('./databases/userActivity.db', sqlite3.OPEN_READWRITE, (err) => {
@@ -74,18 +73,30 @@ client.on('ready', () => {
 client.on('presenceUpdate', (oldPresence, newPresence) => {
   //If we're not tracking this user don't log data.
   if (!trackedUsers.includes(newPresence.user.id)) return;
-  //Define the user's status.
+  //Get the user's status.
   var status = "offline";
   if (newPresence.status) status = newPresence.status;
+  //Get user's connected devices.
+  var devices = [];
+  if (newPresence.clientStatus) devices = Object.keys(newPresence.clientStatus); //Keyed because for some fucking reason clientStatus is an object of device types with individual statuses for each, despite them all being synchronized by design -_-
   //Open our database.
   const sqlite3 = require('sqlite3').verbose();
   let activityDB = new sqlite3.Database('./databases/userActivity.db', sqlite3.OPEN_READWRITE, (err) => {
     if (err) return console.error(err);
   });
+  //Declare table creation string because it's a bitch.
+  var tableCreation = 'CREATE TABLE IF NOT EXISTS activity_log(\
+    user_id TEXT NOT NULL,\
+    status TEXT NOT NULL CHECK(status = "online" OR status = "idle" OR status = "dnd" OR status = "offline"),\
+    timestamp TEXT NOT NULL,\
+    mobile BOOLEAN NOT NULL CHECK(mobile IN (0, 1)),\
+    desktop BOOLEAN NOT NULL CHECK(desktop IN (0, 1)),\
+    web BOOLEAN NOT NULL CHECK(web IN (0, 1))\
+  );';
   //Log user's status to database.
-  activityDB.run('CREATE TABLE IF NOT EXISTS activity_log(user_id TEXT NOT NULL, status TEXT NOT NULL CHECK(status = "online" OR status = "idle" OR status = "dnd" OR status = "offline"), timestamp TEXT NOT NULL);', function(err) {
+  activityDB.run(tableCreation, function(err) {
     if (err) return console.error(err);
-    activityDB.run('INSERT INTO activity_log(user_id, status, timestamp) VALUES(?, ?, ?);', [newPresence.user.id, status, Date.now()], function(err) {
+    activityDB.run('INSERT INTO activity_log(user_id, status, timestamp, mobile, desktop, web) VALUES(?, ?, ?, ?, ?, ?);', [newPresence.user.id, status, Date.now(), devices.includes('mobile') ? 1 : 0, devices.includes('desktop') ? 1 : 0, devices.includes('web') ? 1 : 0], function(err) {
       if (err) return console.error(err);
       //Close database.
       activityDB.close((err) => {
@@ -99,14 +110,14 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
 client.on('interactionCreate', async (interaction) => {
   //If interaction is not a command (no buttons or anything at present) return;
   if (!interaction.isCommand()) return;
-
+  //Create our variables passthrough.
   var vars = {
     client: client,
     interaction: interaction,
     colorConfig: COLOR_CONFIG,
     EmbedBuilder: EmbedBuilder
   };
-
+  //Execute the command if possible.
   try {
     const command = client.commands.get(interaction.commandName);
     await command.execute(vars);
@@ -118,3 +129,26 @@ client.on('interactionCreate', async (interaction) => {
 
 //Connect bot to Discord.
 client.login(BOT_TOKEN);
+
+
+//NN   N  OOOOO  TTTTT  EEEEE  SSSSS
+//N N  N  O   O    T    E      S
+//N  N N  O   O    T    EEEE   SSSSS
+//N   NN  O   O    T    E          S
+//N    N  OOOOO    T    EEEEE  SSSSS
+
+/*
+
+*If two consecutive timestamped entries have the same status and array of 3 connected device booleans they're duplicates regardless of timestamp difference, because the connected devices update matching statuses at different rates.
+
+*/
+
+//TODO
+/*
+
+*Build a way to display activity data.
+
+*/
+
+
+
