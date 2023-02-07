@@ -87,8 +87,9 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
   //Declare table creation string because it's a bitch.
   var tableCreation = 'CREATE TABLE IF NOT EXISTS activity_log(\
     user_id TEXT NOT NULL,\
-    status TEXT NOT NULL CHECK(status = "online" OR status = "idle" OR status = "dnd" OR status = "offline"),\
-    timestamp TEXT NOT NULL,\
+    presence TEXT NOT NULL CHECK(presence = "online" OR presence = "idle" OR presence = "dnd" OR presence = "offline"),\
+    status TEXT NOT NULL,\
+    timestamp INTEGER NOT NULL,\
     mobile BOOLEAN NOT NULL CHECK(mobile IN (0, 1)),\
     desktop BOOLEAN NOT NULL CHECK(desktop IN (0, 1)),\
     web BOOLEAN NOT NULL CHECK(web IN (0, 1))\
@@ -96,7 +97,7 @@ client.on('presenceUpdate', (oldPresence, newPresence) => {
   //Log user's status to database.
   activityDB.run(tableCreation, function(err) {
     if (err) return console.error(err);
-    activityDB.run('INSERT INTO activity_log(user_id, status, timestamp, mobile, desktop, web) VALUES(?, ?, ?, ?, ?, ?);', [newPresence.user.id, status, Date.now(), devices.includes('mobile') ? 1 : 0, devices.includes('desktop') ? 1 : 0, devices.includes('web') ? 1 : 0], function(err) {
+    activityDB.run('INSERT INTO activity_log(user_id, presence, status, timestamp, mobile, desktop, web) VALUES(?, ?, ?, ?, ?, ?, ?);', [newPresence.user.id, status, "PLACEHOLDER", parseInt(Date.now()), devices.includes('mobile') ? 1 : 0, devices.includes('desktop') ? 1 : 0, devices.includes('web') ? 1 : 0], function(err) {
       if (err) return console.error(err);
       //Close database.
       activityDB.close((err) => {
@@ -149,6 +150,3 @@ client.login(BOT_TOKEN);
 *Build a way to display activity data.
 
 */
-
-
-
