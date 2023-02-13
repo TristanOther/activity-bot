@@ -2,3 +2,5 @@
 /token.txt
 #modules
 /node_modules
+#Database folder
+/Databases
