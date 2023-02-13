@@ -1,10 +1,9 @@
 //Date/time Library
 const dayjs = require('dayjs');
 
-//Library for building new constructs.
-const {SlashCommandBuilder} = require('@discordjs/builders');
+const {SlashCommandBuilder} = require('@discordjs/builders'); //Library for building new slash commands.
 
-//Export module, allows code to be run from another file.
+//Lets us call our code from another file.
 module.exports = {
   //Data allowing our slash command to be registered when our bot starts.
   data: new SlashCommandBuilder()
@@ -13,21 +12,23 @@ module.exports = {
 
   //Code to be run when an interaction is receieved.
   async execute(vars) {
-    //Initialize variables from vars input.
+    //Fetch required variables from variable passthrough argument.
     var interaction = vars.interaction;
     var EmbedBuilder = vars.EmbedBuilder;
     var colorConfig = vars.colorConfig;
 
     //Functions
+    //Returns the input UNIX timestamp rounded up to the nearest whole minute.
     function getTimestampMin(timestamp) {
       return (Math.floor(timestamp / 60000) + 1) * 60000;
     }
 
+    //Returns the input UNIX timestamp rounded down to the nearest whole minute.
     function getTimestampHour(timestamp) {
-      //return (Math.floor(timestamp / 3600000) + 1) * 3600000; //Remove +1 somehow to void rounding
       return Math.floor(timestamp / 3600000) * 3600000;
     }
 
+    //Returns an array of UNIX timestamps for the last N hours to the present time.
     function getLastNHours(n) {
       var hours = [];
       for (i=(3600000*n);i>=3600000;i-=3600000) {
@@ -36,6 +37,7 @@ module.exports = {
       return hours;
     }
 
+    //Returns a string representing the discord emoji alias that we want for each status.
     function presenceFormat(presence) {
       if (presence == 'online') return ':green_square:';
       if (presence == 'idle') return ':yellow_square:';
@@ -52,17 +54,20 @@ module.exports = {
     //Query past 24 hours of data.
     activityDB.all(`SELECT * FROM activity_log WHERE user_id = ? ORDER BY timestamp ASC;`, [interaction.member.id], async function(err, rows) { //Date.now() - 97200
       if (err) return console.error(err);
-      if (!rows || rows.length <= 0) return await interaction.reply({embeds: [new EmbedBuilder().setColor(colorConfig.error).setDescription("No tracking data avalible for this user.")]});
+      if (!rows || rows.length <= 0) return await interaction.reply({embeds: [new EmbedBuilder().setColor(colorConfig.error).setDescription("No tracking data avalible for this user.")]}); //Error if no activity data.
       var statuses = {};
+      //Loop throgh every found activity log for the user.
       for (i = 0; i < rows.length; i++) {
+        //Get minute rounded timestamp of this log entry.
         let minute = getTimestampMin(rows[i].timestamp);
-        //while loop to fill in until next timestamp V
+        //Get minute rounded timestamp of next log entry.
         var finalMin;
         if (rows.length > i + 1) {
           finalMin = rows[i + 1].timestamp;
         } else {
           finalMin = getTimestampMin(Date.now());
         }
+        //while loop to clone status of this log entry to every minute before that log entry in local statuses cache.
         while (minute < finalMin) {
           statuses[minute] = {presence: rows[i].presence, status: rows[i].status, devices: [rows[i].mobile, rows[i].desktop, rows[i].web]};
           minute += 60000;
@@ -75,6 +80,7 @@ module.exports = {
       });
     });
 
+    //Function for creating and sending embed reply to interaction.
     function replyToInteraction(statuses) {
       var hourlyStatuses = {};
       var statusKeys = Object.keys(statuses).sort();
@@ -82,6 +88,7 @@ module.exports = {
       var hourIndex = 0;
       var curHour = hours[0];
       var nextHour = hours[1];
+      //Seperate statuses cache by hour for the last 24 hours.
       for (i=0;i<statusKeys.length;i++) {
         if (statusKeys[i] < curHour) continue;
         if (statusKeys[i] >= nextHour) {
@@ -93,6 +100,7 @@ module.exports = {
         hourlyStatuses[curHour].push(statuses[statusKeys[i]]);
       }
 
+      //Average an hour's status.
       var averagedHourlyStatuses = {};
       var hourKeys = Object.keys(hourlyStatuses).sort();
       for (i=0;i<hourKeys.length;i++) {
@@ -112,6 +120,7 @@ module.exports = {
           averagedHourlyStatuses[hourKeys[i]] = {hourString: new dayjs(parseInt(hourKeys[i])).format('h a'), presence: averagePresence};
       }
 
+      //Convert the averaged hourly statuses to a string to use as the displayed field.
       var content = '';
       Object.values(averagedHourlyStatuses).forEach(hour => {
         content += `${presenceFormat(hour.presence)} - ${hour.hourString}\n`;
@@ -124,6 +133,7 @@ module.exports = {
         ...
       */
 
+      //Construct and reply to interaction with embed.
       var embed = new EmbedBuilder()
       .setTitle('Activity in the past 24hr:')
       .setAuthor({name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL()})

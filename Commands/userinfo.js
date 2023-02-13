@@ -1,7 +1,7 @@
-//Library for building new constructs.
-const {SlashCommandBuilder} = require('@discordjs/builders');
+const {SlashCommandBuilder} = require('@discordjs/builders'); //Library for building new slash commands.
+const sqlite3 = require('sqlite3').verbose(); //Database library.
 
-//Export module, allows code to be run from another file.
+//Lets us call our code from another file.
 module.exports = {
   //Data allowing our slash command to be registered when our bot starts.
   data: new SlashCommandBuilder()
@@ -10,21 +10,25 @@ module.exports = {
 
   //Code to be run when an interaction is receieved.
   async execute(vars) {
-    //Initialize variables from vars input.
+    //Fetch required variables from variable passthrough argument.
     var interaction = vars.interaction;
     var EmbedBuilder = vars.EmbedBuilder;
     var colorConfig = vars.colorConfig;
 
     //Open database.
-    const sqlite3 = require('sqlite3').verbose();
     let activityDB = new sqlite3.Database('./databases/userActivity.db', sqlite3.OPEN_READWRITE, (err) => {
       if (err) return console.error(err);
     });
 
-    //Query user timezone.
-    activityDB.all(``)
+    //Query user timezone from users table.
+    var timezone = 'UTC+0'; //Default to UTC+0 in case user has no configured timezone.
+    activityDB.get(`SELECT * FROM users WHERE user_id = ?;`, [interaction.member.id], function(userData, err) {
+      if (err) return console.error(err);
 
-    //Create userinfo embed.
+
+    });
+
+    //Create userinfo embed and reply to interaction.
     var embed = new EmbedBuilder()
     .setAuthor({name: interaction.member.displayName, iconURL: interaction.user.displayAvatarURL()})
     .setColor(colorConfig.info)
@@ -37,8 +41,6 @@ module.exports = {
       {name: 'User Timezone:', value: "", inline: true},
     )
     .setFooter({text: 'Set your timezone with `/timezone` command.'});
-
-    //Reply to interaction with our embed.
     interaction.reply({embeds: [embed], ephemeral: false});
   }
 }

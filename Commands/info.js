@@ -1,7 +1,6 @@
-//Library for building new constructs.
-const {SlashCommandBuilder} = require('@discordjs/builders');
+const {SlashCommandBuilder} = require('@discordjs/builders'); //Library for building new slash commands.
 
-//Export module, allows code to be run from another file.
+//Lets us call our code from another file.
 module.exports = {
   //Data allowing our slash command to be registered when our bot starts.
   data: new SlashCommandBuilder()
@@ -10,13 +9,13 @@ module.exports = {
 
   //Code to be run when an interaction is receieved.
   async execute(vars) {
-    //Initialize variables from vars input.
+    //Fetch required variables from variable passthrough argument.
     var interaction = vars.interaction;
     var EmbedBuilder = vars.EmbedBuilder;
     var colorConfig = vars.colorConfig;
     var client = vars.client;
 
-    //Create info embed.
+    //Create info embed and fill in necessary data.
     var embed = new EmbedBuilder()
     .setTitle('Info about Activity Tracker')
     .setAuthor({name: client.user.tag, iconURL: client.user.displayAvatarURL()})

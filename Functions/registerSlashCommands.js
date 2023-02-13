@@ -1,50 +1,38 @@
-//Packages needed to register slash commands.
-const { REST } = require('@discordjs/rest');
-const { Routes } = require('discord-api-types/v9');
-//File system library.
-const fs = require('fs');
+const fs = require('fs'); //Node file system library.
+const { REST } = require('@discordjs/rest'); //Discord's REST API.
+const { Routes } = require('discord-api-types/v9'); //Discord API types library.
 
 //Lets us call our code from another file.
 exports.run = async (client, CLIENT_ID, GUILD_ID, BOT_TOKEN, DEV_MODE) => {
-  //Intialize our rest api declared above with our token.
-  const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
+  const rest = new REST({ version: '10' }).setToken(BOT_TOKEN); //Initialize the REST API.
+  const commands = []; //Cache for commands we're going to register.
+  const commandFiles = fs.readdirSync('./Commands').filter(file => file.endsWith('.js')); //Collection of js file names in our commands folder.
 
-  //Initialize commands for slash commands from our slash command directory.
-  const commands = [];
-  const commandFiles = fs.readdirSync('./Commands').filter(file => file.endsWith('.js'));
-
-  //For each file in our slash command files directory.
+  //Cache every command in our commands folder.
   for (const file of commandFiles) {
-    //Initializes this file's module.
-    const command = require(`../Commands/${file}`);
-    //Pushes this file's data to our commands array.
-    commands.push(command.data.toJSON());
-    //Adds this command to our commands collection for responding later.
-    client.commands.set(command.data.name, command);
+    const command = require(`../Commands/${file}`); //Fetch the command based on it's file name.
+    commands.push(command.data.toJSON()); //Add command to our local cache for registering.
+    client.commands.set(command.data.name, command); //Add command to our client's commands collection so we can respond to interactions.
   }
 
-  //Register slash commands to our guild ID.
+  //Register slash commands with Discord API.
   (async () => {
-      //Try catch just prevents bs crashes.
       try {
-        //Logs a message to console to alert you when slash command start to be registered.
         console.log(`Started refreshing application (/) commands.`);
-        //Registers commands.
+        //If in dev mode, register cached commands to the dev server, otherwise globally.
         if (DEV_MODE) {
           await rest.put(
             Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-            { body: commands },
+            {body: commands}
           );
         } else {
           await rest.put(
             Routes.applicationCommands(CLIENT_ID),
-            { body: commands },
+            {body: commands}
           );
         }
-        //Logs a message to console when this guild's commands are successfully registered.
         console.log(`Successfully reloaded application (/) commands.`);
       } catch (error) {
-        //Logs the error.
         console.error(error);
       }
   })();
